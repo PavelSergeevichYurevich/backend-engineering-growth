@@ -1,0 +1,11 @@
+{
+    "python.envFile": "/Users/pavel/Documents/PythonPet/backend-engineering-growth/.env",
+    "python.testing.cwd": "/Users/pavel/Documents/PythonPet/backend-engineering-growth",
+    "python.testing.pytestPath": "/Users/pavel/Documents/PythonPet/backend-engineering-growth/env/bin/pytest",
+    "python.testing.pytestArgs": [
+        "-q"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true,
+    "python.defaultInterpreterPath": "/Users/pavel/Documents/PythonPet/backend-engineering-growth/env/bin/python"
+}
