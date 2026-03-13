@@ -14,8 +14,8 @@ from lesson0203.models import Account, Base
 @pytest.fixture
 def test_db():
     test_engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
+        'sqlite://',
+        connect_args={'check_same_thread': False},
         poolclass=StaticPool,
     )
     Base.metadata.create_all(bind=test_engine)
@@ -24,8 +24,8 @@ def test_db():
     db_session = TestSessionLocal()
     db_session.add_all(
         [
-            Account(id=1, balance=Decimal("1000.00"), currency="RUB"),
-            Account(id=2, balance=Decimal("100.00"), currency="RUB"),
+            Account(id=1, balance=Decimal('1000.00'), currency='RUB'),
+            Account(id=2, balance=Decimal('100.00'), currency='RUB'),
         ]
     )
     db_session.commit()
