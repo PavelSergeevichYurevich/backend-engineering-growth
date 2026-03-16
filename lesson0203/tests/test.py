@@ -2,7 +2,7 @@ from decimal import Decimal
 
 from sqlalchemy import select
 
-from lesson0203.models import Account
+from lesson0203.models import Account, IdempotencyRecords
 
 
 def test_forced_failure(client, test_db):
@@ -48,6 +48,7 @@ def test_insufficient_funds(client, test_db):
 
     assert balance1 == balance1_after
     assert balance2 == balance2_after
+
 def test_successful_transfer(client, test_db):
     payload = {
         'from_account_id': 1,
@@ -70,3 +71,56 @@ def test_successful_transfer(client, test_db):
 
     assert balance1 - Decimal('300.00') == balance1_after
     assert balance2 + Decimal('300.00') == balance2_after
+
+def test_create_order_201(client, test_db):
+    payload = {
+        'user_id': 1,
+        'amount': 100,
+        'currency': 'RUB',
+        'idempotency_key': 'test-key-1',
+    }
+
+    response = client.post(url='/orders/', json=payload)
+    stmnt = select(IdempotencyRecords).where(IdempotencyRecords.idempotency_key == 'test-key-1')
+    record = test_db.execute(stmnt).scalar_one_or_none()
+    assert record is not None
+    assert record.request_hash == '1:100:RUB'
+    order_id = record.order_id
+    assert response.status_code == 201
+    assert response.json()['order_id'] == order_id  
+
+def test_create_order_200(client, test_db):
+    payload = {
+        'user_id': 1,
+        'amount': 100,
+        'currency': 'RUB',
+        'idempotency_key': 'test-key-2',
+    }
+
+    response1 = client.post(url='/orders/', json=payload)
+    response2 = client.post(url='/orders/', json=payload)
+
+    assert response1.status_code == 201
+    assert response2.status_code == 200
+    assert response1.json()['order_id'] == response2.json()['order_id']
+
+def test_create_order_idempotency_key_conflict(client, test_db):
+    payload1 = {
+        'user_id': 1,
+        'amount': 100,
+        'currency': 'RUB',
+        'idempotency_key': 'test-key-3',
+    }
+    payload2 = {
+        'user_id': 1,
+        'amount': 200,
+        'currency': 'RUB',
+        'idempotency_key': 'test-key-3',
+    }
+
+    response1 = client.post(url='/orders/', json=payload1)
+    response2 = client.post(url='/orders/', json=payload2)
+
+    assert response1.status_code == 201
+    assert response2.status_code == 409
+    assert response2.json()['detail'] == 'Idempotency key conflict'

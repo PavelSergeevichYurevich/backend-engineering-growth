@@ -9,3 +9,9 @@ class TransferRequest(BaseModel):
     amount: Decimal
     currency: str
     forced_failure: bool = False
+
+class CreateOrder(BaseModel):
+    user_id: int
+    amount: Decimal
+    currency: str
+    idempotency_key: str

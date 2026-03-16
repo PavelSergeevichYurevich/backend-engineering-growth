@@ -2,9 +2,10 @@ from decimal import Decimal
 
 from fastapi import HTTPException
 from sqlalchemy import insert, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from .models import Account, Transfer
+from .models import Account, IdempotencyRecords, Order, Transfer
 
 
 def transfer_transaction(
@@ -57,6 +58,41 @@ def transfer_transaction(
         session.commit()
         return {'transfer_id': transfer_id}
 
+    except Exception:
+        session.rollback()
+        raise
+
+def create_order(user_id: int, amount: Decimal, currency: str, idempotency_key: str, session: Session):
+    try:
+        try:
+            stmt = insert(Order).values(
+                user_id=user_id,
+                amount=amount,
+                currency=currency,
+            ).returning(Order.id)
+            order_id = session.execute(stmt).scalar_one()
+
+            stmnt = insert(IdempotencyRecords).values(
+                idempotency_key=idempotency_key,
+                request_hash=f'{user_id}:{amount}:{currency}',
+                order_id=order_id
+            )
+            session.execute(stmnt)
+            session.commit()
+            return {'status':'created', 'order_id': order_id}
+
+        except IntegrityError:
+            session.rollback()
+            stmnt = select(IdempotencyRecords).where(IdempotencyRecords.idempotency_key == idempotency_key).with_for_update()
+            record = session.execute(stmnt).scalar_one_or_none()
+            if record:
+                if record.request_hash == f'{user_id}:{amount}:{currency}':
+                    return {'status':'replayed', 'order_id': record.order_id}
+                else:
+                    raise HTTPException(status_code=409, detail='Idempotency key conflict') 
+            else:
+                raise HTTPException(status_code=500, detail='Unknown error')
+       
     except Exception:
         session.rollback()
         raise

@@ -42,3 +42,18 @@ class Transfer(Base):
     to_account = relationship(
         'Account', foreign_keys=[to_account_id], back_populates='incoming_transfers'
     )
+
+class Order(Base):
+    __tablename__ = 'orders'
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, nullable=False)
+    amount = Column(Numeric(18, 2), nullable=False)
+    currency = Column(Text, nullable=False)
+    created_at = Column(TIMESTAMP, server_default=func.now())
+
+class IdempotencyRecords(Base):
+    __tablename__ = 'idempotency_records'
+    id = Column(Integer, primary_key=True)
+    idempotency_key = Column(Text, nullable=False, unique=True)
+    request_hash = Column(Text, nullable=False)
+    order_id = Column(Integer, ForeignKey('orders.id'), nullable=False)
