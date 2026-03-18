@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from .db import get_session
 from .schemas import CreateOrder, TransferRequest
-from .services import create_order, transfer_transaction
+from .services import create_order, get_order_by_id_cached, transfer_transaction
 
 router = APIRouter()
 
@@ -37,3 +37,7 @@ def create_order_and_key(payload: CreateOrder, session: Session = Depends(get_se
         return {'order_id': result['order_id']}
     else:
         raise HTTPException(status_code=500, detail='Unknown status')
+    
+@router.get('/orders/{order_id}')
+def get_order(order_id: int, session: Session = Depends(get_session)):
+    return get_order_by_id_cached(order_id, session)

@@ -5,6 +5,8 @@ from sqlalchemy import insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from lesson0203.cache import get_order_from_cache, invalidate_order_cache, set_order_cache
+
 from .models import Account, IdempotencyRecords, Order, Transfer
 
 
@@ -79,6 +81,7 @@ def create_order(user_id: int, amount: Decimal, currency: str, idempotency_key: 
             )
             session.execute(stmnt)
             session.commit()
+            on_order_created(order_id)
             return {'status':'created', 'order_id': order_id}
 
         except IntegrityError:
@@ -96,3 +99,27 @@ def create_order(user_id: int, amount: Decimal, currency: str, idempotency_key: 
     except Exception:
         session.rollback()
         raise
+
+def get_order_by_id_cached(order_id: int, session):
+    cached = get_order_from_cache(order_id)
+    if cached:
+        return cached  # cache hit
+
+    stmt = select(Order).where(Order.id == order_id)
+    order = session.execute(stmt).scalar_one_or_none()
+    if not order:
+        raise HTTPException(status_code=404, detail='Order not found')
+
+    result = {
+        'order_id': order.id,
+        'user_id': order.user_id,
+        'amount': str(order.amount),
+        'currency': order.currency,
+    }
+    set_order_cache(order_id, result)  # cache miss -> fill cache
+    return result
+
+
+def on_order_created(order_id: int):
+    # вариант 1: invalidate
+    invalidate_order_cache(order_id)

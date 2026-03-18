@@ -9,6 +9,7 @@ from sqlalchemy.pool import StaticPool
 from lesson0203.db import get_session
 from lesson0203.main import app
 from lesson0203.models import Account, Base
+from lesson0203 import services as services_module
 
 
 @pytest.fixture
@@ -47,3 +48,8 @@ def client(test_db):
     with TestClient(app=app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def mock_cache_invalidation(monkeypatch):
+    monkeypatch.setattr(services_module, 'invalidate_order_cache', lambda order_id: None)
