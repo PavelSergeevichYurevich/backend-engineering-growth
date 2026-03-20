@@ -1,7 +1,7 @@
 from decimal import Decimal
 
 from fastapi import HTTPException
-from sqlalchemy import insert, select
+from sqlalchemy import desc, insert, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -123,3 +123,18 @@ def get_order_by_id_cached(order_id: int, session):
 def on_order_created(order_id: int):
     # вариант 1: invalidate
     invalidate_order_cache(order_id)
+
+def get_user_orders_by_id(user_id: int, limit: int, session):
+    stmnt = select(Order).where(Order.user_id == user_id).order_by(desc(Order.created_at)).limit(limit)
+    result = session.execute(stmnt)
+    orders = result.scalars().all()
+    ret_result = {
+        'orders': [{'order_id': order.id,
+                    'user_id': order.user_id,
+                    'amount': str(order.amount),
+                    'currency': order.currency
+                    }
+                    for order in orders 
+                    ]
+    }
+    return ret_result

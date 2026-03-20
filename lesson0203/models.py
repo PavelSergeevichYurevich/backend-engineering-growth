@@ -1,4 +1,4 @@
-from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, Numeric, Text, func
+from sqlalchemy import TIMESTAMP, Column, ForeignKey, Index, Integer, Numeric, Text, func
 from sqlalchemy.orm import DeclarativeBase, relationship
 
 
@@ -50,6 +50,7 @@ class Order(Base):
     amount = Column(Numeric(18, 2), nullable=False)
     currency = Column(Text, nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
+    __table_args__ = (Index('idx_user_id_created_at_desc', 'user_id', 'created_at'),)
 
 class IdempotencyRecords(Base):
     __tablename__ = 'idempotency_records'

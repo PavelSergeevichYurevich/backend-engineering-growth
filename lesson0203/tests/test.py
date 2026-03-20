@@ -213,3 +213,87 @@ def test_create_order_invalidates_cache_on_created(client, monkeypatch):
     assert calls['order_id'] == response.json()['order_id']
 
 
+def test_get_orders_by_user_id_200(client, test_db):
+    payload1 = {
+        'user_id': 1,
+        'amount': 100,
+        'currency': 'RUB',
+        'idempotency_key': 'test-key-2',
+    }
+    payload2 = {
+        'user_id': 1,
+        'amount': 200,
+        'currency': 'RUB',
+        'idempotency_key': 'test-key-3',
+    }
+
+    response1 = client.post(url='/orders/', json=payload1)
+    response2 = client.post(url='/orders/', json=payload2)
+    assert response1.status_code == 201
+    assert response2.status_code == 201
+    
+    response = client.get(url='/orders?user_id=1')
+    assert response.status_code == 200
+    assert len(response.json()['orders']) == 2
+    for order in response.json()['orders']:
+        assert order['user_id'] == 1
+        assert order['amount'] in ['100.00', '200.00']
+        assert order['currency'] == 'RUB'
+
+def test_get_orders_sorted_desc(client, test_db):
+    payload1 = {
+        'user_id': 1,
+        'amount': 100,
+        'currency': 'RUB',
+        'idempotency_key': 'test-key-2',
+    }
+    payload2 = {
+        'user_id': 1,
+        'amount': 200,
+        'currency': 'RUB',
+        'idempotency_key': 'test-key-3',
+    }
+    payload3 = {
+        'user_id': 1,
+        'amount': 300,
+        'currency': 'RUB',
+        'idempotency_key': 'test-key-4',
+    }
+
+    response1 = client.post(url='/orders/', json=payload1)
+    response2 = client.post(url='/orders/', json=payload2)
+    response3 = client.post(url='/orders/', json=payload3)
+    assert response1.status_code == 201
+    assert response2.status_code == 201
+    assert response3.status_code == 201
+
+    response = client.get(url='/orders?user_id=1&limit=10')
+    assert response.status_code == 200
+    orders = response.json()['orders']
+    assert len(orders) == 3
+    assert orders[0]['amount'] == '300.00'
+    assert orders[1]['amount'] == '200.00'
+    assert orders[2]['amount'] == '100.00'
+    assert [order['user_id'] for order in orders] == [1, 1, 1]
+
+def test_get_orders_respects_limit(client, test_db):
+    payloads = []
+    for i in range(5):
+        payloads.append({
+            'user_id': 1,
+            'amount': 100 + i * 100,
+            'currency': 'RUB',
+            'idempotency_key': f'test-key-{i+2}',
+        })
+    for payload in payloads:
+        response = client.post(url='/orders/', json=payload)
+        assert response.status_code == 201  
+    response = client.get(url='/orders?user_id=1&limit=3')
+    assert response.status_code == 200
+    orders = response.json()['orders']
+    assert len(orders) == 3
+    assert orders[0]['amount'] == '500.00'
+    assert orders[1]['amount'] == '400.00'
+    assert orders[2]['amount'] == '300.00'
+    assert [order['user_id'] for order in orders] == [1, 1, 1]
+    

@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from .db import get_session
 from .schemas import CreateOrder, TransferRequest
-from .services import create_order, get_order_by_id_cached, transfer_transaction
+from .services import create_order, get_order_by_id_cached, get_user_orders_by_id, transfer_transaction
 
 router = APIRouter()
 
@@ -41,3 +41,7 @@ def create_order_and_key(payload: CreateOrder, session: Session = Depends(get_se
 @router.get('/orders/{order_id}')
 def get_order(order_id: int, session: Session = Depends(get_session)):
     return get_order_by_id_cached(order_id, session)
+
+@router.get('/orders')
+def get_orders_by_user_id(user_id:int, limit: int = 20, session: Session = Depends(get_session)):
+    return get_user_orders_by_id(user_id=user_id, limit=limit, session=session)
